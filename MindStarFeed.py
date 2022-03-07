@@ -8,8 +8,8 @@ print("Bot started...")
 
 with daemon.DaemonContext():
     def telegram_bot_sendtext(bot_message):
-        TOKEN = "your -token"
-        CHAT = "your channel"
+        TOKEN = "your token"
+        CHAT = "your channel/group"
         send_text = "https://api.telegram.org/bot" + TOKEN + "/sendMessage?chat_id=" + CHAT + "&parse_mode=Markdown&text=" + bot_message
 
         response = requests.get(send_text)
