@@ -1,43 +1,56 @@
-import time
-import requests
 import feedparser
-from datetime import datetime
-import daemon
+import requests
 
-print("Bot started...")
+def check_for_new_posts(mind_feed):
+    new_posts = []
+    existing_posts = set()
 
-with daemon.DaemonContext():
-    def telegram_bot_sendtext(bot_message):
-        TOKEN = "your token"
-        CHAT = "your channel/group"
-        send_text = "https://api.telegram.org/bot" + TOKEN + "/sendMessage?chat_id=" + CHAT + "&parse_mode=Markdown&text=" + bot_message
+    # Check our text file against existing posts to prevent duplication
+    with open("/home/stoli/Python/MindStarRSS/posts.txt") as file:
+        for line in file:
+            existing_posts.add(line.strip())
 
-        response = requests.get(send_text)
+    # If the post has not previously been added, add it to the new_posts list
+    for post in mind_feed.entries:
+        if post.title not in existing_posts:
+            new_posts.append(post)
 
-        return response.json()
+    # Write each post title, price, msprice, link, and published date to our text file for later reference
+    with open("/home/stoli/Python/MindStarRSS/posts.txt", "a+") as file:
+        for post in new_posts:
+            file.write(post.title + "\n")
+            file.write(post._price + "\n")
+            file.write(post._msprice + "\n")
+            file.write(post.link + "\n")
+            file.write(post.published + "\n")
 
-    def Mindstar():
-        try:
-            NewsFeed = feedparser.parse("https://www.mindfactory.de/xml/rss/mindstar_artikel.xml")
-            FeedText = NewsFeed.entries[0].title + "\n" + NewsFeed.entries[0]._msprice + "€" + "\n" + NewsFeed.entries[0]._price + "€" + "\n" + NewsFeed.entries[0].link
-        except:
-            FeedText = "Ups... da stimmt etwas nicht!"
-        return FeedText
-
-    if __name__ == "__main__":
-        OldFeedText = ""
-
-        while True:
-            datum = datetime.now().strftime('%d.%m.%Y')
-            tag = datetime.now().strftime('%w')
-            sekunde = datetime.now().strftime('%S')
-
-            if sekunde == "02":
-                FeedText = Mindstar()
-                if FeedText != OldFeedText:
-                    if telegram_bot_sendtext(FeedText):
-                        OldFeedText = FeedText
-            time.sleep(1)
+    return new_posts    
 
 
+def send_telegram_message(message):
+    TOKEN = "YOUR_TOKEN"
+    CHAT = "CHAT_ID"
+    send_text = "https://api.telegram.org/bot" + TOKEN + "/sendMessage?chat_id=" + CHAT + "&text=" + message
+
+    response = requests.get(send_text)
+
+    return response.json()
+
+
+def main():
+    mind_feed = feedparser.parse("https://www.mindfactory.de/xml/rss/mindstar_artikel.xml")
+    new_posts = check_for_new_posts(mind_feed)
+    message = "Neue Artikel:\n\n" 
+    if len(new_posts) > 0:
+       for post in new_posts:
+           message += "Titel: " + post.title + "\n"
+           message += "Preis: " + post._price + "€\n"
+           message += "MS-Preis: " + post._msprice + "€\n"
+           message += "Link: " + post.link + "\n"
+           message += "Erschienen: " + post.published + "\n\n"
+       send_telegram_message(message)   
+    
+
+if __name__ == '__main__':
+    main()
 
